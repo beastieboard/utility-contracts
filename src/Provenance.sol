@@ -1,4 +1,5 @@
 
+// see: https://ssadler.substack.com/p/contract-provenance-verification-175
 
 interface IProvenance {
   function getProvenanceData() external returns (uint salt, bytes32 codeHash);
