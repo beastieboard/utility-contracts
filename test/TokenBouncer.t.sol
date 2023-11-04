@@ -5,7 +5,7 @@ pragma solidity ^0.8.20;
 pragma experimental ABIEncoderV2;
 
 
-import "forge-std/Test.sol";
+import "lib/forge-std/src/Test.sol";
 import "../src/AuthProxy.sol";
 import "../src/TokenBouncer.sol";
 
@@ -52,7 +52,7 @@ contract TestTokenBouncer is Test {
       0
     );
 
-    vm.expectRevert(bytes(transferFromFailed));
+    vm.expectRevert(abi.encodeWithSignature("TransferFromFailed()"));
 
     outputs = proxy.proxy(calls);
   }

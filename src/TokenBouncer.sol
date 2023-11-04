@@ -1,4 +1,5 @@
-import "@openzeppelin/contracts/interfaces/IERC20.sol";
+import "lib/openzeppelin-contracts/contracts/interfaces/IERC20.sol";
+import "lib/solady/src/utils/SafeTransferLib.sol";
 import "./AuthProxy.sol";
 
 
@@ -38,13 +39,7 @@ contract TokenBouncer {
       from = AUTH_PROXY.getCaller();
     }
 
-    // Do the transfer on behalf of the caller and check the result
-    require(
-      token.transferFrom(from, to, amount),
-      transferFromFailed
-    );
+    SafeTransferLib.safeTransferFrom(address(token), from, to, amount);
   }
 }
 
-
-string constant transferFromFailed = "TokenBouncer: transferFrom returned false";

@@ -1,8 +1,6 @@
 
 pragma solidity ^0.8.16;
 
-import "forge-std/Test.sol";
-
 /*
  * This contract is designed to help a user perform multiple
  * authenticated calls to different contracts in one transaction.
@@ -63,11 +61,13 @@ contract AuthProxy {
       target = abi.decode(output, (address));
     }
 
-    bytes memory callData = buildCallData(call, i, outputs);
+    if (call.copyWords > 0) {
+      runCopyWords(call, i, outputs);
+    }
 
     _app = target;
 
-    (bool ok, bytes memory rdata) = target.call(callData);
+    (bool ok, bytes memory rdata) = target.call(call.callData);
 
     if (!ok) {
       assembly { revert(add(rdata, 32), mload(rdata)) }
@@ -81,40 +81,35 @@ contract AuthProxy {
    *
    * Note, that this may not compose in the presence of dynamically sized types.
    */
-  function buildCallData(Call memory call, uint i, bytes[] memory outputs)
-    internal pure returns (bytes memory)
-  {
+  function runCopyWords(Call memory call, uint i, bytes[] memory outputs) internal pure {
+
     bytes memory callData = call.callData;
+    uint copyWords = call.copyWords;
 
-    if (call.copyWords > 0) {
-      uint r = callData.length % 32;
-      require(r == 0 || r == 4, "unknown calldata format");
+    uint r = callData.length % 32;
+    require(r == 0 || r == 4, "unknown calldata format");
 
-      uint copyWords = call.copyWords;
-      while (copyWords > 0) {
-        uint destWord = copyWords & 31;
-        copyWords >>= 5;
-        uint sourceWord = copyWords & 31;
-        copyWords >>= 5;
-        uint resultIndex = copyWords & 63;
-        copyWords >>= 6;
+    while (copyWords > 0) {
+      uint destWord = copyWords & 31;
+      copyWords >>= 5;
+      uint sourceWord = copyWords & 31;
+      copyWords >>= 5;
+      uint resultIndex = copyWords & 63;
+      copyWords >>= 6;
 
-        require(resultIndex < i, "proxyAuth invalid arg index");
-        bytes memory output = outputs[resultIndex];
+      require(resultIndex < i, "proxyAuth invalid arg index");
+      bytes memory output = outputs[resultIndex];
 
-        require(sourceWord * 32 + 32 <= output.length, "proxyAuth invalid arg offset");
-        // TODO: require target offset sanity
+      require(sourceWord * 32 + 32 <= output.length, "proxyAuth invalid arg offset");
+      // TODO: require target offset sanity
 
-        assembly {
-          mstore(
-            add(add(callData, add(r, 32)), mul(destWord, 32)),
-            mload(add(add(output, 32), mul(sourceWord, 32)))
-          )
-        }
+      assembly {
+        mstore(
+          add(add(callData, add(r, 32)), mul(destWord, 32)),
+          mload(add(add(output, 32), mul(sourceWord, 32)))
+        )
       }
     }
-
-    return callData;
   }
 
   /*
